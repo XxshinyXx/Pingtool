@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Ping Tool</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 30px; }
+    input, button, select { padding: 8px; margin: 5px; }
+    #log { white-space: pre-wrap; background: #111; color: #0f0; padding: 15px; border-radius: 10px; max-height: 500px; overflow-y: auto;}
+  </style>
+</head>
+<body>
+  <h1>Ping Tool</h1>
+  <form id="pingForm">
+    <input type="text" id="target" placeholder="Enter IP or domain" required>
+    <select id="mode">
+      <option value="icmp">ICMP Ping</option>
+      <option value="tcp">TCP Ping</option>
+      <option value="http">HTTP Check</option>
+    </select>
+    <input type="number" id="port" placeholder="Port (for TCP)" min="1" max="65535">
+    <button type="submit">Start</button>
+    <button type="button" onclick="stopPing()">Stop</button>
+  </form>
+  <div id="log"></div>
+
+  <script>
+    let eventSource;
+
+    document.getElementById('pingForm').onsubmit = function(e) {
+      e.preventDefault();
+      if (eventSource) eventSource.close();
+
+      const target = document.getElementById('target').value;
+      const mode = document.getElementById('mode').value;
+      const port = document.getElementById('port').value;
+
+      eventSource = new EventSource(`/ping?target=${target}&mode=${mode}&port=${port}`);
+      document.getElementById('log').innerHTML = '';
+
+      eventSource.onmessage = function(event) {
+        document.getElementById('log').innerHTML += event.data + "\n";
+        document.getElementById('log').scrollTop = document.getElementById('log').scrollHeight;
+      };
+    };
+
+    function stopPing() {
+      if (eventSource) eventSource.close();
+    }
+  </script>
+</body>
+</html>
