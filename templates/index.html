@@ -1,26 +1,34 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Ping Tool</title>
+  <title>Ping Monitor</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 30px; }
-    input, button, select { padding: 8px; margin: 5px; }
-    #log { white-space: pre-wrap; background: #111; color: #0f0; padding: 15px; border-radius: 10px; max-height: 500px; overflow-y: auto;}
+    body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: #eee; margin: 0; padding: 30px; }
+    h1 { text-align: center; color: #0af; }
+    form { text-align: center; margin-bottom: 20px; }
+    input, select, button { padding: 10px; margin: 5px; border-radius: 5px; border: none; }
+    button { background: #0af; color: #000; cursor: pointer; }
+    button:hover { background: #08c; }
+    #log { background: #111; color: #0f0; padding: 15px; border-radius: 10px; height: 400px; overflow-y: auto; font-family: monospace; }
+    .up { color: #0f0; }
+    .down { color: #f33; }
+    .time { color: #888; }
   </style>
 </head>
 <body>
-  <h1>Ping Tool</h1>
+  <h1>Ping Monitor</h1>
   <form id="pingForm">
-    <input type="text" id="target" placeholder="Enter IP or domain" required>
+    <input type="text" id="target" placeholder="Enter IP/domain/URL" required>
     <select id="mode">
-      <option value="icmp">ICMP Ping</option>
-      <option value="tcp">TCP Ping</option>
-      <option value="http">HTTP Check</option>
+      <option value="icmp">ICMP</option>
+      <option value="tcp">TCP</option>
+      <option value="http">HTTP</option>
     </select>
-    <input type="number" id="port" placeholder="Port (for TCP)" min="1" max="65535">
+    <input type="number" id="port" placeholder="Port (TCP only)" min="1" max="65535">
     <button type="submit">Start</button>
     <button type="button" onclick="stopPing()">Stop</button>
   </form>
+
   <div id="log"></div>
 
   <script>
@@ -34,12 +42,17 @@
       const mode = document.getElementById('mode').value;
       const port = document.getElementById('port').value;
 
-      eventSource = new EventSource(`/ping?target=${target}&mode=${mode}&port=${port}`);
-      document.getElementById('log').innerHTML = '';
+      eventSource = new EventSource(`/ping?target=${encodeURIComponent(target)}&mode=${mode}&port=${port}`);
+      const log = document.getElementById('log');
+      log.innerHTML = '';
 
       eventSource.onmessage = function(event) {
-        document.getElementById('log').innerHTML += event.data + "\n";
-        document.getElementById('log').scrollTop = document.getElementById('log').scrollHeight;
+        const msg = JSON.parse(event.data);
+        const div = document.createElement('div');
+        div.innerHTML = `<span class="time">[${msg.time}]</span> ${msg.status}`;
+        div.className = msg.up ? 'up' : 'down';
+        log.appendChild(div);
+        log.scrollTop = log.scrollHeight;
       };
     };
 
