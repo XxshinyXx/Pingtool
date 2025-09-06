@@ -1,8 +1,6 @@
 from flask import Flask, render_template, request, Response
-import subprocess
-import socket
-import requests
-import time
+import subprocess, socket, requests, time, json
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -16,37 +14,51 @@ def ping():
     mode = request.args.get("mode")
     port = request.args.get("port", type=int)
 
+    # Fix HTTP scheme
+    if mode == "http" and not target.startswith("http://") and not target.startswith("https://"):
+        target = "http://" + target
+
     def generate():
         while True:
             try:
+                now = datetime.now().strftime("%H:%M:%S")
+                status_text = ""
+                is_up = False
+
                 if mode == "icmp":
-                    result = subprocess.run(["ping", "-c", "1", target], capture_output=True)
+                    result = subprocess.run(["ping", "-c", "1", target.split("//")[-1]], capture_output=True)
                     if result.returncode == 0:
-                        yield f"data: {target} is reachable\n\n"
+                        status_text = f"{target} is reachable"
+                        is_up = True
                     else:
-                        yield f"data: Bitch is Down XD\n\n"
+                        status_text = "Bitch is Down XD🥶🤡"
 
                 elif mode == "tcp":
                     try:
-                        sock = socket.create_connection((target, port), timeout=2)
+                        sock = socket.create_connection((target.split("//")[-1], port), timeout=2)
                         sock.close()
-                        yield f"data: TCP {target}:{port} is reachable\n\n"
+                        status_text = f"TCP {target}:{port} is reachable"
+                        is_up = True
                     except:
-                        yield f"data: Bitch is Down XD\n\n"
+                        status_text = "Bitch is Down XD🥶🤡"
 
                 elif mode == "http":
                     try:
-                        r = requests.get(f"http://{target}", timeout=3)
+                        r = requests.get(target, timeout=5)
                         if r.status_code == 200:
-                            yield f"data: HTTP {target} is UP (200)\n\n"
+                            status_text = f"HTTP {target} is UP (200)"
+                            is_up = True
                         else:
-                            yield f"data: HTTP {target} returned {r.status_code}\n\n"
+                            status_text = f"HTTP {target} returned {r.status_code}"
                     except:
-                        yield f"data: Bitch is Down XD\n\n"
+                        status_text = "Bitch is Down XD🥶🤡"
 
+                yield f"data: {json.dumps({'time': now, 'status': status_text, 'up': is_up})}\n\n"
                 time.sleep(1)
             except GeneratorExit:
                 break
+            except:
+                yield f"data: {json.dumps({'time': now, 'status': 'Error occured', 'up': False})}\n\n"
 
     return Response(generate(), mimetype="text/event-stream")
 
